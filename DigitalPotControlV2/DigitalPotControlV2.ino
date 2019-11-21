@@ -1,3 +1,5 @@
+#include <SPI.h>
+
 /*
   Digital Pot Control
 
@@ -14,54 +16,69 @@
   * CLK - to digital pin 13 (SCK pin)
 */
 
-// inslude the SPI library:
-#include <SPI.h>
-
-// set pin 10 as the slave select for the digital pot:
 const int SYNC_PIN = 10;
-#define chipSelectPin SYNC_PIN
 const int dataReadyPin = 6;
-const int CMD_01 = 2048;  // 000010XXXXXXXXXX = 2048
+
+#define RDACenable_uncalibrated 6150
+#define chipSelectPin SYNC_PIN
+#define SPI_FREQ 2000000
+#define LONG_DELAY 50
+#define SHRT_DELAY 10
 
 void setup() {
   pinMode(SYNC_PIN, OUTPUT);
   pinMode(dataReadyPin, INPUT);
   Serial.begin(115200);
   SPI.begin();
-  SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE2));
-  delay(50);
+  SPI.beginTransaction(SPISettings(SPI_FREQ, MSBFIRST, SPI_MODE2));
+  delay(LONG_DELAY);
+  sendUint16(6150);
 }
 
-void digitalPotWrite(int value) {
-  unsigned char cmd = (unsigned char)(value>>8);
-  unsigned char val = value & 0xff;
-  Serial.println("Value\t" + String(value,BIN) + '\t' + value);
-  Serial.println("Concat\t" + String(cmd,DEC) + '+' + String(val,DEC));
-  //Serial.println("CMD\t" + String(cmd,BIN) + '\t' + cmd);
-  //Serial.println("VAL\t" + String(val,BIN) + '\t' + val);
-
+void sendUint16(uint16_t value){
   digitalWrite(dataReadyPin, HIGH);
   digitalWrite(SYNC_PIN, LOW);
-  delay(50);
-  SPI.transfer(cmd);
-  SPI.transfer(val);
-  delay(50);
-  
-  // take the SS pin high to de-select the chip:
+  delay(LONG_DELAY);
+  SPI.transfer16(value);
+  delay(SHRT_DELAY);
   digitalWrite(SYNC_PIN, HIGH);
   digitalWrite(dataReadyPin, LOW);
-  
-  }
+  delay(LONG_DELAY);
+}
 
+void sendUint(uint8_t value){
+  digitalWrite(dataReadyPin, HIGH);
+  digitalWrite(SYNC_PIN, LOW);
+  delay(LONG_DELAY);
+  SPI.transfer(value);
+  delay(SHRT_DELAY);
+  digitalWrite(SYNC_PIN, HIGH);
+  digitalWrite(dataReadyPin, LOW);
+  delay(LONG_DELAY);
+}
+
+void digitalPotWrite(uint16_t value) {
+  //unsigned char cmd = (unsigned char)(value>>8);
+  //unsigned char val = value & 0xff;
+  //Serial.println("Concat\t" + String(cmd,DEC) + '+' + String(val,DEC));
+  sendUint16(value);
+  //sendUint(cmd);
+  //sendUint(val);
+}
 
 void loop() {
-    
-    for (int level = 1024; level < 2048; level++) {
-      digitalPotWrite(level);
-      delay(50);
- }
-     for (int level = 2047; level > 1023; level--) {
-      digitalPotWrite(level);
-      delay(50);
- }
+  sendUint16(1024);
+  delay(250);
+  sendUint16(2047);
+  delay(250);
+//    for (int level = 1024; level < 2048; level++) {
+//      Serial.println("Value\t" + String(level, BIN) + '\t' + level);
+//      digitalPotWrite(level);
+//      delay(50);
+// }
+//     for (int level = 2047; level > 1023; level--) {
+//      Serial.println("Value\t" + String(level, BIN) + '\t' + level);
+//      digitalPotWrite(level);
+//      delay(50);
+// }
 }
