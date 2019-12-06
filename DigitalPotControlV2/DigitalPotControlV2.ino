@@ -18,27 +18,31 @@
 
 const int SYNC_PIN = 10;
 const int dataReadyPin = 6;
-
-#define RDACenable_uncalibrated 6150
-#define chipSelectPin SYNC_PIN
-#define SPI_FREQ 2000000
-#define LONG_DELAY 50
-#define SHRT_DELAY 10
+const uint16_t RDAC_enable_uncalibrated = 6150;
+const uint32_t SPI_FREQ = 20000;
+const unsigned long LONG_DELAY = 250;
+const unsigned long SHRT_DELAY = 1;
 
 void setup() {
   pinMode(SYNC_PIN, OUTPUT);
   pinMode(dataReadyPin, INPUT);
-  Serial.begin(115200);
   SPI.begin();
   SPI.beginTransaction(SPISettings(SPI_FREQ, MSBFIRST, SPI_MODE2));
   delay(LONG_DELAY);
-  sendUint16(6150);
+
+  digitalWrite(dataReadyPin, HIGH);
+  digitalWrite(SYNC_PIN, LOW);
+  sendUint16(RDAC_enable_uncalibrated);
+  digitalWrite(dataReadyPin, HIGH);
+  digitalWrite(SYNC_PIN, LOW);
+
+  delay(LONG_DELAY);
 }
 
 void sendUint16(uint16_t value){
   digitalWrite(dataReadyPin, HIGH);
   digitalWrite(SYNC_PIN, LOW);
-  delay(LONG_DELAY);
+  delay(SHRT_DELAY);
   SPI.transfer16(value);
   delay(SHRT_DELAY);
   digitalWrite(SYNC_PIN, HIGH);
@@ -49,7 +53,7 @@ void sendUint16(uint16_t value){
 void sendUint(uint8_t value){
   digitalWrite(dataReadyPin, HIGH);
   digitalWrite(SYNC_PIN, LOW);
-  delay(LONG_DELAY);
+  delay(SHRT_DELAY);
   SPI.transfer(value);
   delay(SHRT_DELAY);
   digitalWrite(SYNC_PIN, HIGH);
@@ -57,28 +61,27 @@ void sendUint(uint8_t value){
   delay(LONG_DELAY);
 }
 
-void digitalPotWrite(uint16_t value) {
-  //unsigned char cmd = (unsigned char)(value>>8);
-  //unsigned char val = value & 0xff;
-  //Serial.println("Concat\t" + String(cmd,DEC) + '+' + String(val,DEC));
-  sendUint16(value);
-  //sendUint(cmd);
-  //sendUint(val);
+void loop_through_Rs(){
+  for (int level = 1024; level < 2048; level++) {
+    sendUint16(level);
+    delay(SHRT_DELAY);
+    }
+  for (int level = 2047; level > 1023; level--) {
+    sendUint16(level);
+    delay(SHRT_DELAY);
+  }
+}
+
+void flicker(){
+  sendUint16(RDAC_enable_uncalibrated);
+  delay(500);
+  sendUint16(1024);
+  delay(500);
+  sendUint16(2047);
+  delay(500);
 }
 
 void loop() {
-  sendUint16(1024);
-  delay(250);
-  sendUint16(2047);
-  delay(250);
-//    for (int level = 1024; level < 2048; level++) {
-//      Serial.println("Value\t" + String(level, BIN) + '\t' + level);
-//      digitalPotWrite(level);
-//      delay(50);
-// }
-//     for (int level = 2047; level > 1023; level--) {
-//      Serial.println("Value\t" + String(level, BIN) + '\t' + level);
-//      digitalPotWrite(level);
-//      delay(50);
-// }
+  flicker();
 }
+
